@@ -403,9 +403,13 @@ def view_application(app_id):
         return redirect(url_for("status_login"))
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT application_no, applicant_name, mobile, dob, village, block, "
-                "bank_account, ifsc, status, submitted_at, decided_at "
-                "FROM applications WHERE id = %s", (app_id,))
+    cur.execute(
+    """SELECT application_no, applicant_name, mobile, dob, village, block,
+              bank_account, ifsc, status, submitted_at, decided_at
+       FROM applications
+       WHERE id = %s AND mobile = %s""",
+    (app_id, session["portal_mobile"]),
+)
     row = cur.fetchone()
     cur.close(); conn.close()
     if not row:
@@ -512,18 +516,40 @@ def edit_application(app_id):
 
 @app.route("/ack/<int:app_id>.pdf")
 def ack_pdf(app_id):
+    if not session.get("logged_in"):
+        return redirect(url_for("status_login"))
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT id FROM applications WHERE id = %s AND mobile = %s",
+        (app_id, session["portal_mobile"]),
+    )
+
+    allowed = cur.fetchone()
+
+    if not allowed:
+        cur.close()
+        conn.close()
+        abort(404)
+
     path = os.path.join(UPLOAD_DIR, "ack", "%d.pdf" % app_id)
-    if not os.path.exists(path):
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM applications WHERE id = %s", (app_id,))
-        if not cur.fetchone():
-            cur.close(); conn.close()
-            abort(404)
-        data = generate_acknowledgment(cur, app_id)
-        cur.close(); conn.close()
-        return send_file(io.BytesIO(data), mimetype="application/pdf")
-    return send_file(path, mimetype="application/pdf")
+
+    if os.path.exists(path):
+        cur.close()
+        conn.close()
+        return send_file(path, mimetype="application/pdf")
+
+    data = generate_acknowledgment(cur, app_id)
+
+    cur.close()
+    conn.close()
+
+    return send_file(
+        io.BytesIO(data),
+        mimetype="application/pdf"
+    )
 
 
 @app.route("/status/reset", methods=["GET", "POST"])
