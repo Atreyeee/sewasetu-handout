@@ -412,6 +412,103 @@ def view_application(app_id):
         abort(404)
     return render_template("application.html", a=row, app_id=app_id)
 
+@app.route("/application/<int:app_id>/edit", methods=["GET", "POST"])
+def edit_application(app_id):
+    if not session.get("logged_in"):
+        return redirect(url_for("status_login"))
+
+    mobile = session.get("portal_mobile")
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        """SELECT application_no, applicant_name, mobile, dob, gender,
+                  marital_status, husband_name, husband_employer,
+                  village, block, bank_account, ifsc, status
+           FROM applications
+           WHERE id = %s AND mobile = %s""",
+        (app_id, mobile),
+    )
+
+    row = cur.fetchone()
+
+    if not row:
+        cur.close()
+        conn.close()
+        abort(404)
+
+    if row[12] != "PENDING":
+        cur.close()
+        conn.close()
+        flash("This application can no longer be changed.")
+        return redirect(url_for("view_application", app_id=app_id))
+
+    if request.method == "POST":
+        applicant_name = sanitize(
+            request.form.get("applicant_name", ""),
+            maxlen=100,
+        )
+        village = request.form.get("village", "").strip()
+        block = request.form.get("block", "").strip()
+        gender = request.form.get("gender", "").strip()
+        marital_status = request.form.get("marital_status", "").strip()
+        husband_name = request.form.get("husband_name", "").strip()
+        husband_employer = request.form.get("husband_employer", "").strip()
+        bank_account = request.form.get("bank_account", "").strip()
+        ifsc = request.form.get("ifsc", "").strip().upper()
+
+        if not applicant_name or not village or not block or not bank_account:
+            flash("Please complete all required fields.")
+            cur.close()
+            conn.close()
+            return redirect(url_for("edit_application", app_id=app_id))
+
+        cur.execute(
+            """UPDATE applications
+               SET applicant_name = %s,
+                   village = %s,
+                   block = %s,
+                   gender = %s,
+                   marital_status = %s,
+                   husband_name = %s,
+                   husband_employer = %s,
+                   bank_account = %s,
+                   ifsc = %s
+               WHERE id = %s
+                 AND mobile = %s
+                 AND status = 'PENDING'""",
+            (
+                applicant_name,
+                village,
+                block,
+                gender,
+                marital_status,
+                husband_name,
+                husband_employer,
+                bank_account,
+                ifsc,
+                app_id,
+                mobile,
+            ),
+        )
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        flash("Your application has been updated.")
+        return redirect(url_for("view_application", app_id=app_id))
+
+    cur.close()
+    conn.close()
+
+    return render_template(
+        "edit_application.html",
+        a=row,
+        blocks=BLOCKS,
+        app_id=app_id,
+    )
 
 @app.route("/ack/<int:app_id>.pdf")
 def ack_pdf(app_id):

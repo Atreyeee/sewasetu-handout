@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Correct Application</h2>
+
+<p class="note">
+    You can correct your application while it is still pending review.
+    Once a decision has been made, the application cannot be changed.
+</p>
+
+<form method="post">
+    <label>Applicant Name</label>
+    <input type="text" name="applicant_name" value="{{ a[1] }}" required>
+
+    <label>Gender</label>
+    <select name="gender">
+        <option value="Male" {% if a[4]=='Male' %}selected{% endif %}>Male</option>
+        <option value="Female" {% if a[4]=='Female' %}selected{% endif %}>Female</option>
+        <option value="Other" {% if a[4]=='Other' %}selected{% endif %}>Other</option>
+    </select>
+
+    <label>Marital Status</label>
+    <select name="marital_status">
+        <option value="Married" {% if a[5]=='Married' %}selected{% endif %}>Married</option>
+        <option value="Unmarried" {% if a[5]=='Unmarried' %}selected{% endif %}>Unmarried</option>
+        <option value="Widowed" {% if a[5]=='Widowed' %}selected{% endif %}>Widowed</option>
+    </select>
+
+    <label>Husband's Name</label>
+    <input type="text" name="husband_name" value="{{ a[6] or '' }}">
+
+    <label>Husband's Employer</label>
+    <input type="text" name="husband_employer" value="{{ a[7] or '' }}">
+
+    <label>Village</label>
+    <input type="text" name="village" value="{{ a[8] }}" required>
+
+    <label>Block</label>
+    <select name="block" required>
+        {% for block in blocks %}
+        <option value="{{ block }}" {% if a[9]==block %}selected{% endif %}>
+            {{ block }}
+        </option>
+        {% endfor %}
+    </select>
+
+    <label>Bank Account</label>
+    <input type="text" name="bank_account" value="{{ a[10] }}" required>
+
+    <label>IFSC</label>
+    <input type="text" name="ifsc" value="{{ a[11] }}">
+
+    <p>
+        <button class="btn" type="submit">Save Correction</button>
+    </p>
+</form>
+{% endblock %}
